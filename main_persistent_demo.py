@@ -47,11 +47,26 @@ def call_resume_session(session_id, answer):
   ) 
   return response.json()
 
+def call_get_session_data(session_id, data_type):
+  ENDPOINT = st.session_state['aws_endpoint']
+  ACCESS_TOKEN = get_access_token()
+  response = requests.post(
+    f"{ENDPOINT}/session/data",
+    json={"session_id": session_id, "data_type": data_type},
+    headers={"Authorization": f"Bearer {ACCESS_TOKEN}"}
+  ) 
+  return response.json()
+
 def message_callback(message):
   with st.chat_message("assistant"):
     response = st.write(message)
   # Add assistant message to chat history
   st.session_state.messages.append({"role": "assistant", "content": message})
+
+def display_course_outline():
+  response = call_get_session_data(st.session_state['session_id'], "course_outline")
+  if 'data' in response:
+    st.write(f"=====> course_outline:\n\n {response['data']}")
 
 def go_to_session():
   st.title("Dynamic Questioning App")
@@ -86,9 +101,12 @@ def go_to_session():
       if 'question' in response:
         message_callback(response['question'])
         st.session_state['session_in_progress'] = True
+      else:
+        display_course_outline()
   else:
     if 'session_id' in st.session_state:
       st.write(f"=====> session_id: {st.session_state['session_id']}")
+      display_course_outline()
 
   # Display chat messages from history on app rerun
   for message in st.session_state.messages:
@@ -105,6 +123,8 @@ def go_to_session():
     response = call_resume_session(st.session_state['session_id'], answer)
     if 'question' in response:
       message_callback(response['question'])
+    else:
+      display_course_outline()
   pass
 
 if __name__ == "__main__":
